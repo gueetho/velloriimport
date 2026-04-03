@@ -1,48 +1,67 @@
 (function() {
-    // Usamos o caminho começando com / para não ter erro de pasta
-    const URL_JSON = '/produtos.json'; 
+    const URL_JSON = '/produtos.json';
 
-    async function injetarProdutos() {
-        console.log("Tentando carregar produtos do JSON...");
+    async function ajustarVitrine() {
         try {
             const res = await fetch(URL_JSON);
             const produtos = await res.json();
-            
-            // 1. Procura o container que está com a mensagem de "Nenhum produto"
-            const divs = document.querySelectorAll('div');
-            let alvo = null;
 
-            for (const div of divs) {
-                if (div.innerText && div.innerText.includes("Nenhum produto encontrado")) {
-                    alvo = div.closest('div').parentElement; 
+            // 1. Acha o elemento que diz "Nenhum produto encontrado"
+            const elementos = document.querySelectorAll('*');
+            let msgErro = null;
+            for (let el of elementos) {
+                if (el.childNodes.length === 1 && el.innerText === "Nenhum produto encontrado") {
+                    msgErro = el;
                     break;
                 }
             }
 
-            // 2. Se não achar, usa o 'main' do site
-            const container = alvo || document.querySelector('main') || document.body;
+            if (!msgErro) return;
 
-            if (container && produtos.length > 0) {
-                container.innerHTML = `
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; padding: 20px; max-width: 1200px; margin: 0 auto;">
-                        ${produtos.map(p => `
-                            <div style="background: white; border: 1px solid #eee; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: 0.3s;">
-                                <img src="${p.image}" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;">
-                                <h3 style="font-size: 14px; margin: 15px 0 10px; color: #333; height: 40px; overflow: hidden; line-height: 1.4;">${p.title}</h3>
-                                <p style="color: #7b2cbf; font-weight: bold; font-size: 20px; margin-bottom: 15px;">R$ ${p.price}</p>
-                                <a href="${p.url}" target="_blank" style="display: block; background: #7b2cbf; color: white; text-decoration: none; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 13px;">VER DETALHES</a>
-                            </div>
-                        `).join('')}
+            // 2. Sobe até o container branco principal
+            const containerBranco = msgErro.closest('div').parentElement;
+            
+            if (containerBranco && produtos.length > 0) {
+                // Limpa o ícone de interrogação e o texto de erro
+                containerBranco.innerHTML = ''; 
+                
+                // 3. Aplica o Grid que segue a largura do site
+                containerBranco.style.display = "grid";
+                containerBranco.style.gridTemplateColumns = "repeat(auto-fill, minmax(200px, 1fr))";
+                containerBranco.style.gap = "20px";
+                containerBranco.style.padding = "20px";
+
+                // 4. Injeta os cards com link interno (não vai mais pro 1688)
+                containerBranco.innerHTML = produtos.map(p => `
+                    <div style="background:#fff; border:1px solid #f3f4f6; border-radius:12px; padding:12px; transition:all 0.3s; cursor:pointer;" 
+                         onmouseover="this.style.boxShadow='0 10px 15px -3px rgba(0,0,0,0.1)'" 
+                         onmouseout="this.style.boxShadow='none'">
+                        
+                        <div style="width:100%; height:180px; overflow:hidden; border-radius:8px; margin-bottom:12px;">
+                            <img src="${p.image}" style="width:100%; height:100%; object-fit:contain;">
+                        </div>
+
+                        <h3 style="font-size:13px; font-weight:600; color:#1f2937; height:38px; overflow:hidden; margin-bottom:8px; line-height:1.4;">
+                            ${p.title}
+                        </h3>
+
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:10px;">
+                            <span style="color:#7c3aed; font-size:18px; font-weight:800;">R$ ${p.price}</span>
+                        </div>
+
+                        <a href="/product/${p.id}" style="display:block; width:100%; background:#7c3aed; color:#fff; text-align:center; padding:10px; border-radius:8px; margin-top:12px; text-decoration:none; font-size:12px; font-weight:bold;">
+                            VER DETALHES
+                        </a>
                     </div>
-                `;
-                console.log("Vitrine injetada com sucesso!");
+                `).join('');
             }
         } catch (e) {
-            console.error("Erro ao injetar produtos:", e);
+            console.error("Erro ao montar vitrine:", e);
         }
     }
 
-    // Roda depois de 1 e 3 segundos para garantir que o Next.js terminou de carregar
-    setTimeout(injetarProdutos, 1500);
-    setTimeout(injetarProdutos, 3500);
+    // Tenta rodar em vários tempos para vencer o carregamento lento do site original
+    window.addEventListener('load', ajustarVitrine);
+    setTimeout(ajustarVitrine, 1000);
+    setTimeout(ajustarVitrine, 3000);
 })();
