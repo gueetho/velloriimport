@@ -1876,53 +1876,48 @@
   <script>$RS = function (a, b) { a = document.getElementById(a); b = document.getElementById(b); for (a.parentNode.removeChild(a); a.firstChild;)b.parentNode.insertBefore(a.firstChild, b); b.parentNode.removeChild(b) }; $RS("S:1", "P:1")</script>
   <script>$RC = function (b, c, e) { c = document.getElementById(c); c.parentNode.removeChild(c); var a = document.getElementById(b); if (a) { b = a.previousSibling; if (e) b.data = "$!", a.setAttribute("data-dgst", e); else { e = b.parentNode; a = b.nextSibling; var f = 0; do { if (a && 8 === a.nodeType) { var d = a.data; if ("/$" === d) if (0 === f) break; else f--; else "$" !== d && "$?" !== d && "$!" !== d || f++ } d = a.nextSibling; e.removeChild(a); a = d } while (a); for (; c.firstChild;)e.insertBefore(c.firstChild, a); b.data = "$" } b._reactRetry && b._reactRetry() } }; $RC("B:0", "S:0")</script>
 
-  <script>
-  // Aguarda o carregamento completo para tentar interceptar o input
+ <script>
   document.addEventListener('DOMContentLoaded', () => {
-    // Tenta encontrar o input de pesquisa pela aria-label ou placeholder
-    const inputsPesquisa = document.querySelectorAll('input[placeholder*="1688"]');
+    // Pega os campos de texto do seu site compilado
+    const searchInputs = document.querySelectorAll('input[type="text"][placeholder*="1688"], input[type="text"][placeholder*="produto"]');
+    const searchButtons = document.querySelectorAll('svg.cursor-pointer');
 
-    inputsPesquisa.forEach(input => {
-      // Impede o envio padrão caso o input esteja dentro de um form
-      const formPai = input.closest('form');
-      if (formPai) {
-          formPai.addEventListener('submit', (e) => {
-              e.preventDefault();
-              realizarBuscaNaSuaAPI(input.value);
-          });
-      }
+    function fazerBusca(termo) {
+      if (!termo.trim()) return;
+      
+      alert('Buscando: ' + termo + '... Verifique a aba Console (F12) para ver os dados retornados do 1688.');
+      
+      // Chama o seu Worker configurado no passo 1
+      const urlWorker = `https://velloriimport.guetho2017.workers.dev/produtos?search=${encodeURIComponent(termo)}`;
+      
+      fetch(urlWorker)
+        .then(res => res.json())
+        .then(dados => {
+            console.log('RESPOSTA DA API 1688:', dados);
+            // Aqui você deve colocar a lógica para criar os produtos na tela
+        })
+        .catch(err => console.error('Erro:', err));
+    }
 
-      // Adiciona o evento de tecla "Enter"
-      input.addEventListener('keypress', function (e) {
+    // Intercepta o "Enter" na barra de pesquisa
+    searchInputs.forEach(input => {
+      input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
-          realizarBuscaNaSuaAPI(e.target.value);
+          e.stopPropagation();
+          fazerBusca(e.target.value);
         }
-      });
+      }, true);
     });
 
-    function realizarBuscaNaSuaAPI(termo) {
-      if (!termo || termo.trim() === '') return;
-
-      // Altere esta URL para a rota do seu Cloudflare Worker
-      const urlDoSeuWorker = `https://velloriimport.guetho2017.workers.dev/buscar?q=${encodeURIComponent(termo)}`;
-      
-      console.log("Enviando termo para a sua API:", termo);
-      
-      // Aqui você faria o fetch para sua API e depois atualizaria a tela
-      // Exemplo:
-      /*
-      fetch(urlDoSeuWorker)
-        .then(res => res.json())
-        .then(dados => console.log('Dados do 1688:', dados))
-        .catch(err => console.error(err));
-      */
-      
-      // Como a renderização dos produtos também é React, 
-      // idealmente você apenas redireciona o usuário para uma nova página
-      // passando o termo de busca, caso seu worker renderize o HTML.
-      // window.location.href = urlDoSeuWorker;
-    }
+    // Intercepta o clique na lupa
+    searchButtons.forEach((btn, index) => {
+       btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if(searchInputs[index]) fazerBusca(searchInputs[index].value);
+       }, true);
+    });
   });
 </script>
 
