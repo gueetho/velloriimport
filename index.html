@@ -1876,30 +1876,85 @@
   <script>$RS = function (a, b) { a = document.getElementById(a); b = document.getElementById(b); for (a.parentNode.removeChild(a); a.firstChild;)b.parentNode.insertBefore(a.firstChild, b); b.parentNode.removeChild(b) }; $RS("S:1", "P:1")</script>
   <script>$RC = function (b, c, e) { c = document.getElementById(c); c.parentNode.removeChild(c); var a = document.getElementById(b); if (a) { b = a.previousSibling; if (e) b.data = "$!", a.setAttribute("data-dgst", e); else { e = b.parentNode; a = b.nextSibling; var f = 0; do { if (a && 8 === a.nodeType) { var d = a.data; if ("/$" === d) if (0 === f) break; else f--; else "$" !== d && "$?" !== d && "$!" !== d || f++ } d = a.nextSibling; e.removeChild(a); a = d } while (a); for (; c.firstChild;)e.insertBefore(c.firstChild, a); b.data = "$" } b._reactRetry && b._reactRetry() } }; $RC("B:0", "S:0")</script>
 
- <script>
+<script>
   document.addEventListener('DOMContentLoaded', () => {
-    // Pega os campos de texto do seu site compilado
     const searchInputs = document.querySelectorAll('input[type="text"][placeholder*="1688"], input[type="text"][placeholder*="produto"]');
     const searchButtons = document.querySelectorAll('svg.cursor-pointer');
 
-    function fazerBusca(termo) {
-      if (!termo.trim()) return;
-      
-      alert('Buscando: ' + termo + '... Verifique a aba Console (F12) para ver os dados retornados do 1688.');
-      
-      // Chama o seu Worker configurado no passo 1
-      const urlWorker = `https://velloriimport.guetho2017.workers.dev/produtos?search=${encodeURIComponent(termo)}`;
-      
-      fetch(urlWorker)
-        .then(res => res.json())
-        .then(dados => {
-            console.log('RESPOSTA DA API 1688:', dados);
-            // Aqui você deve colocar a lógica para criar os produtos na tela
-        })
-        .catch(err => console.error('Erro:', err));
+    // 1. Cria a tela de carregamento e a vitrine
+    function exibirCarregamento() {
+      let overlay = document.getElementById('resultado-1688-overlay');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'resultado-1688-overlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.98);z-index:999999;overflow-y:auto;padding:30px;box-sizing:border-box;font-family:sans-serif;';
+        document.body.appendChild(overlay);
+      }
+      overlay.innerHTML = '<div style="text-align:center;margin-top:20%;font-size:24px;font-weight:bold;color:#555;">Buscando produtos no 1688...</div>';
     }
 
-    // Intercepta o "Enter" na barra de pesquisa
+    // 2. Transforma o JSON em imagens e preços na tela
+    function renderizarVitrine(dados) {
+      const overlay = document.getElementById('resultado-1688-overlay');
+      if (!overlay) return;
+
+      // Identifica a lista de produtos (adapta-se a diferentes estruturas de JSON)
+      const produtos = dados.items || dados.result?.item || dados.data?.items || dados.data || [];
+
+      if (!Array.isArray(produtos) || produtos.length === 0) {
+        overlay.innerHTML = `
+          <button onclick="document.getElementById('resultado-1688-overlay').remove()" style="padding:10px 20px;background:#666;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-bottom:20px;">Voltar</button>
+          <div style="text-align:center;font-size:20px;color:#333;">Nenhum produto encontrado.</div>
+        `;
+        return;
+      }
+
+      let html = `
+        <button onclick="document.getElementById('resultado-1688-overlay').remove()" style="padding:10px 20px;background:#6b21a8;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-bottom:20px;font-size:16px;">⬅ Voltar para o site</button>
+        <h2 style="margin-bottom:20px;color:#333;">Resultados da Busca:</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:20px;">
+      `;
+
+      produtos.forEach(p => {
+        // Mapeia os dados do produto (fotos, título e preço)
+        const imagem = p.pic_url || p.img || p.image || p.thumbnail || '';
+        const titulo = p.title || 'Produto sem título';
+        const preco = p.price || p.promotion_price || 'Sob consulta';
+        
+        html += `
+          <div style="border:1px solid #eaeaea;border-radius:8px;padding:15px;background:#fff;text-align:center;box-shadow:0 4px 6px rgba(0,0,0,0.05);">
+            <img src="${imagem}" style="width:100%;height:220px;object-fit:cover;border-radius:5px;margin-bottom:12px;" alt="Imagem do Produto">
+            <h3 style="font-size:14px;color:#444;margin:0 0 10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;" title="${titulo}">${titulo}</h3>
+            <div style="font-size:20px;font-weight:bold;color:#e53e3e;">¥ ${preco}</div>
+          </div>
+        `;
+      });
+
+      html += `</div>`;
+      overlay.innerHTML = html;
+    }
+
+    // 3. Função principal de busca
+    function fazerBusca(termo) {
+      if (!termo || !termo.trim()) return;
+      
+      exibirCarregamento();
+      
+      const urlSuaAPI = `https://workerjs.guetho2017.workers.dev/produtos?search=${encodeURIComponent(termo)}`;
+      
+      fetch(urlSuaAPI)
+        .then(res => res.json())
+        .then(dados => {
+            renderizarVitrine(dados);
+        })
+        .catch(err => {
+            console.error('Erro na API:', err);
+            const overlay = document.getElementById('resultado-1688-overlay');
+            if(overlay) overlay.innerHTML = '<button onclick="this.parentElement.remove()" style="padding:10px 20px;background:#666;color:#fff;border:none;border-radius:5px;cursor:pointer;">Voltar</button><p style="color:red;margin-top:20px;font-size:18px;">Erro ao carregar os produtos.</p>';
+        });
+    }
+
+    // Intercepta a tecla Enter
     searchInputs.forEach(input => {
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
@@ -1910,7 +1965,7 @@
       }, true);
     });
 
-    // Intercepta o clique na lupa
+    // Intercepta os cliques na lupa
     searchButtons.forEach((btn, index) => {
        btn.addEventListener('click', (e) => {
           e.preventDefault();
