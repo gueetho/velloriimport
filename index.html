@@ -1877,123 +1877,58 @@
   <script>$RC = function (b, c, e) { c = document.getElementById(c); c.parentNode.removeChild(c); var a = document.getElementById(b); if (a) { b = a.previousSibling; if (e) b.data = "$!", a.setAttribute("data-dgst", e); else { e = b.parentNode; a = b.nextSibling; var f = 0; do { if (a && 8 === a.nodeType) { var d = a.data; if ("/$" === d) if (0 === f) break; else f--; else "$" !== d && "$?" !== d && "$!" !== d || f++ } d = a.nextSibling; e.removeChild(a); a = d } while (a); for (; c.firstChild;)e.insertBefore(c.firstChild, a); b.data = "$" } b._reactRetry && b._reactRetry() } }; $RC("B:0", "S:0")</script>
 
 <script>
-  // Aguarda 1 segundo para garantir que o DOM do Next.js carregou os inputs
-  setTimeout(() => {
-    // 1. Identifica o input de pesquisa original do site
-    const inputOriginal = document.querySelector('input[placeholder*="1688"], input[placeholder*="produto"]');
-    if (!inputOriginal) return;
+  function iniciarBusca1688() {
+    const input = document.querySelector('input[placeholder*="1688"], input[placeholder*="produto"], .search-input');
+    if (!input) return;
 
-    // 2. Clona o container para neutralizar as funções originais do React/Next.js
-    const containerOriginal = inputOriginal.closest('form') || inputOriginal.parentElement;
-    const containerClone = containerOriginal.cloneNode(true);
-    containerOriginal.parentNode.replaceChild(containerClone, containerOriginal);
+    // Remove funções originais do site que dão 404
+    const novoInput = input.cloneNode(true);
+    input.parentNode.replaceChild(novoInput, input);
 
-    const novoInput = containerClone.querySelector('input');
-    const novoBotao = containerClone.querySelector('svg');
+    const disparar = () => {
+      const termo = novoInput.value;
+      if (termo.length < 2) return;
+      
+      document.body.insertAdjacentHTML('beforeend', '<div id="loader-1688" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:999999;display:flex;align-items:center;justify-content:center;font-family:sans-serif;font-size:20px;">Buscando...</div>');
 
-    // Função para criar/exibir o overlay de carregamento
-    function exibirCarregamento() {
-      let overlay = document.getElementById('resultado-1688-overlay');
-      if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'resultado-1688-overlay';
-        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.98);z-index:999999;overflow-y:auto;padding:30px;box-sizing:border-box;font-family:sans-serif;';
-        document.body.appendChild(overlay);
-      }
-      overlay.innerHTML = '<div style="text-align:center;margin-top:20%;font-size:24px;font-weight:bold;color:#555;">Buscando produtos traduzidos...</div>';
-    }
-
-    // FUNÇÃO DE RENDERIZAÇÃO: Sincronizada com a "gaveta" do Worker (items.item)
-    function renderizarVitrine(dados) {
-      const overlay = document.getElementById('resultado-1688-overlay');
-      if (!overlay) return;
-
-      // MAPEAMENTO ROBUSTO: Tenta achar a lista de produtos onde quer que ela esteja
-      let produtos = [];
-      if (dados.items && Array.isArray(dados.items.item)) {
-        produtos = dados.items.item; // Formato padrão que o seu Worker está enviando
-      } else if (Array.isArray(dados.items)) {
-        produtos = dados.items;
-      } else if (dados.result && Array.isArray(dados.result.item)) {
-        produtos = dados.result.item;
-      } else if (Array.isArray(dados)) {
-        produtos = dados;
-      }
-
-      if (produtos.length === 0) {
-        overlay.innerHTML = `
-          <div style="text-align:center;padding:50px;">
-            <button onclick="document.getElementById('resultado-1688-overlay').remove()" style="padding:10px 20px;background:#666;color:#fff;border:none;border-radius:5px;cursor:pointer;">Voltar</button>
-            <p style="margin-top:20px;font-size:18px;">Nenhum produto encontrado nesta busca.</p>
-          </div>`;
-        return;
-      }
-
-      let html = `
-        <div style="max-width:1200px;margin:0 auto;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;">
-            <h2 style="font-size:22px;color:#333;">Resultados Encontrados:</h2>
-            <button onclick="document.getElementById('resultado-1688-overlay').remove()" style="padding:12px 25px;background:#6b21a8;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:bold;box-shadow:0 4px 10px rgba(107,33,168,0.3);">⬅ Voltar para o Site</button>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:25px;">`;
-
-      produtos.forEach(p => {
-        // Ajuste de link de imagem (garante que tenha https:)
-        let imgUrl = p.pic_url || p.img || p.image || '';
-        if (imgUrl.startsWith('//')) imgUrl = 'https:' + imgUrl;
-
-        const titulo = p.title || 'Produto 1688';
-        const preco = p.price || 'Sob consulta';
-
-        html += `
-          <div style="border:1px solid #eee;border-radius:12px;padding:15px;background:#fff;transition:transform 0.2s;box-shadow:0 2px 5px rgba(0,0,0,0.05);">
-            <div style="width:100%;height:200px;overflow:hidden;border-radius:8px;margin-bottom:12px;">
-              <img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='https://via.placeholder.com/200?text=Sem+Imagem'">
-            </div>
-            <h3 style="font-size:14px;color:#333;margin:0 0 10px;height:40px;line-height:20px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${titulo}</h3>
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-               <span style="font-size:18px;font-weight:bold;color:#e53e3e;">¥ ${preco}</span>
-               <span style="font-size:11px;color:#999;">1688 API</span>
-            </div>
-          </div>`;
-      });
-
-      overlay.innerHTML = html + '</div></div>';
-    }
-
-    function realizarBusca(termo) {
-      if (!termo || termo.trim().length < 2) return;
-      exibirCarregamento();
-
-      // Chamada para o seu Worker da Cloudflare
       fetch(`https://workerjs.guetho2017.workers.dev/produtos?search=${encodeURIComponent(termo)}`)
-        .then(res => res.json())
-        .then(dados => renderizarVitrine(dados))
-        .catch(err => {
-          console.error("Erro na busca:", err);
-          const overlay = document.getElementById('resultado-1688-overlay');
-          if (overlay) overlay.innerHTML = '<p style="text-align:center;padding:50px;color:red;">Erro ao conectar com o servidor de busca.</p>';
-        });
-    }
+        .then(r => r.json())
+        .then(res => {
+          let html = '<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:999999;overflow-y:auto;padding:20px;box-sizing:border-box;font-family:sans-serif;">';
+          html += '<button onclick="location.reload()" style="width:100%;padding:15px;background:#000;color:#fff;border:none;border-radius:8px;margin-bottom:20px;font-weight:bold;">Voltar para o Site</button>';
+          html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">';
+          
+          (res.lista || []).forEach(p => {
+            const img = (p.pic_url || '').startsWith('http') ? p.pic_url : 'https:' + p.pic_url;
+            html += `<div style="border:1px solid #eee;padding:10px;border-radius:8px;">
+              <img src="${img}" style="width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:5px;">
+              <p style="font-size:12px;margin:8px 0;height:32px;overflow:hidden;">${p.title}</p>
+              <b style="color:red;">¥ ${p.price}</b>
+            </div>`;
+          });
 
-    // Evento de tecla Enter
-    novoInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
+          document.getElementById('loader-1688').remove();
+          document.body.insertAdjacentHTML('beforeend', html + '</div></div>');
+        });
+    };
+
+    novoInput.addEventListener('keydown', e => e.key === 'Enter' && disparar());
+    // Captura clique em qualquer ícone de busca próximo ao input (comum em celular)
+    document.addEventListener('click', e => {
+      if (e.target.closest('button') && e.target.closest('button').contains(novoInput.parentElement)) {
         e.preventDefault();
-        realizarBusca(novoInput.value);
+        disparar();
       }
     });
+  }
 
-    // Evento de clique no ícone/botão de lupa
-    if (novoBotao) {
-      const btn = novoBotao.closest('button') || novoBotao.closest('a') || novoBotao;
-      btn.style.cursor = 'pointer';
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        realizarBusca(novoInput.value);
-      });
+  // Tenta rodar a cada 1 segundo até achar o input (Next.js demora a renderizar)
+  const timer = setInterval(() => {
+    if (document.querySelector('input')) {
+      iniciarBusca1688();
+      clearInterval(timer);
     }
-  }, 1500); // Tempo levemente maior para garantir estabilidade no carregamento
+  }, 1000);
 </script>
 
 </body>
