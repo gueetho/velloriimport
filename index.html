@@ -1876,11 +1876,8 @@
   <script>$RS = function (a, b) { a = document.getElementById(a); b = document.getElementById(b); for (a.parentNode.removeChild(a); a.firstChild;)b.parentNode.insertBefore(a.firstChild, b); b.parentNode.removeChild(b) }; $RS("S:1", "P:1")</script>
   <script>$RC = function (b, c, e) { c = document.getElementById(c); c.parentNode.removeChild(c); var a = document.getElementById(b); if (a) { b = a.previousSibling; if (e) b.data = "$!", a.setAttribute("data-dgst", e); else { e = b.parentNode; a = b.nextSibling; var f = 0; do { if (a && 8 === a.nodeType) { var d = a.data; if ("/$" === d) if (0 === f) break; else f--; else "$" !== d && "$?" !== d && "$!" !== d || f++ } d = a.nextSibling; e.removeChild(a); a = d } while (a); for (; c.firstChild;)e.insertBefore(c.firstChild, a); b.data = "$" } b._reactRetry && b._reactRetry() } }; $RC("B:0", "S:0")</script>
 
-<script>
+  <script>
   document.addEventListener('DOMContentLoaded', () => {
-    const searchInputs = document.querySelectorAll('input[type="text"][placeholder*="1688"], input[type="text"][placeholder*="produto"]');
-    const searchButtons = document.querySelectorAll('svg.cursor-pointer');
-
     // 1. Cria a tela de carregamento e a vitrine
     function exibirCarregamento() {
       let overlay = document.getElementById('resultado-1688-overlay');
@@ -1898,13 +1895,12 @@
       const overlay = document.getElementById('resultado-1688-overlay');
       if (!overlay) return;
 
-      // Identifica a lista de produtos (adapta-se a diferentes estruturas de JSON)
       const produtos = dados.items || dados.result?.item || dados.data?.items || dados.data || [];
 
       if (!Array.isArray(produtos) || produtos.length === 0) {
         overlay.innerHTML = `
           <button onclick="document.getElementById('resultado-1688-overlay').remove()" style="padding:10px 20px;background:#666;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-bottom:20px;">Voltar</button>
-          <div style="text-align:center;font-size:20px;color:#333;">Nenhum produto encontrado.</div>
+          <div style="text-align:center;font-size:20px;color:#333;">Nenhum produto encontrado ou erro na API.</div>
         `;
         return;
       }
@@ -1916,7 +1912,6 @@
       `;
 
       produtos.forEach(p => {
-        // Mapeia os dados do produto (fotos, título e preço)
         const imagem = p.pic_url || p.img || p.image || p.thumbnail || '';
         const titulo = p.title || 'Produto sem título';
         const preco = p.price || p.promotion_price || 'Sob consulta';
@@ -1937,45 +1932,48 @@
     // 3. Função principal de busca
     function fazerBusca(termo) {
       if (!termo || !termo.trim()) return;
-      
       exibirCarregamento();
       
       const urlSuaAPI = `https://workerjs.guetho2017.workers.dev/produtos?search=${encodeURIComponent(termo)}`;
       
       fetch(urlSuaAPI)
         .then(res => res.json())
-        .then(dados => {
-            renderizarVitrine(dados);
-        })
+        .then(dados => renderizarVitrine(dados))
         .catch(err => {
-            console.error('Erro na API:', err);
             const overlay = document.getElementById('resultado-1688-overlay');
             if(overlay) overlay.innerHTML = '<button onclick="this.parentElement.remove()" style="padding:10px 20px;background:#666;color:#fff;border:none;border-radius:5px;cursor:pointer;">Voltar</button><p style="color:red;margin-top:20px;font-size:18px;">Erro ao carregar os produtos.</p>';
         });
     }
 
-    // Intercepta a tecla Enter
-    searchInputs.forEach(input => {
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+    // BLOQUEIO AGRESSIVO - Intercepta o "Enter" antes do React do seu site
+    window.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+        const placeholder = e.target.placeholder ? e.target.placeholder.toLowerCase() : '';
+        if (placeholder.includes('1688') || placeholder.includes('produto')) {
           e.preventDefault();
           e.stopPropagation();
+          e.stopImmediatePropagation();
           fazerBusca(e.target.value);
         }
-      }, true);
-    });
+      }
+    }, true);
 
-    // Intercepta os cliques na lupa
-    searchButtons.forEach((btn, index) => {
-       btn.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if(searchInputs[index]) fazerBusca(searchInputs[index].value);
-       }, true);
-    });
+    // BLOQUEIO AGRESSIVO - Intercepta o clique na lupa antes do React do seu site
+    window.addEventListener('click', function(e) {
+      const btn = e.target.closest('svg.cursor-pointer');
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        
+        // Procura o campo de texto próximo à lupa
+        const container = btn.closest('div') || btn.parentElement;
+        const input = container.querySelector('input[type="text"]');
+        if (input) fazerBusca(input.value);
+      }
+    }, true);
   });
 </script>
-
 
 </body>
 
